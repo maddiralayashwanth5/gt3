@@ -1,7 +1,5 @@
 {
   "room": "demo",
   "signaling_url": "ws://13.205.19.192:8080/ws",
-  "system_audio_device": null,
-  "mic_injection_device": null,
-  "mic_injection_name": "CABLE Input"
+  "system_audio_device": null
 }

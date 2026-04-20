@@ -5,15 +5,14 @@ import asyncio
 import json
 import logging
 import os
+import sys
 
 from aiortc import RTCPeerConnection, RTCSessionDescription
 from aiortc.sdp import candidate_from_sdp
 from websockets.asyncio.client import connect
 
 from audio_capture import (
-    MicInjectionSink,
     SystemAudioTrack,
-    find_output_device_by_name,
     list_input_devices,
     list_output_devices,
 )
@@ -47,16 +46,14 @@ def parse_candidate(payload: dict):
 
 
 class TargetAgent:
-    def __init__(self, signaling_url: str, room: str, system_audio_device: int | None, mic_injection_device: int | None) -> None:
+    def __init__(self, signaling_url: str, room: str, system_audio_device: int | None) -> None:
         self.signaling_url = signaling_url
         self.room = room
         self.system_audio_device = system_audio_device
-        self.mic_injection_device = mic_injection_device
         self.pc: RTCPeerConnection | None = None
         self.ws = None
         self.screen_track: ScreenVideoTrack | None = None
         self.system_audio_track: SystemAudioTrack | None = None
-        self.mic_sink: MicInjectionSink | None = None
 
     async def send(self, message: dict) -> None:
         await self.ws.send(json.dumps(message))
@@ -71,16 +68,12 @@ class TargetAgent:
         if self.system_audio_track:
             self.system_audio_track.stop()
             self.system_audio_track = None
-        if self.mic_sink:
-            self.mic_sink.close()
-            self.mic_sink = None
 
     async def create_peer(self) -> RTCPeerConnection:
         await self.reset_peer()
         pc = RTCPeerConnection()
         self.screen_track = ScreenVideoTrack()
         self.system_audio_track = SystemAudioTrack(device_index=self.system_audio_device)
-        self.mic_sink = MicInjectionSink(device_index=self.mic_injection_device)
 
         pc.addTrack(self.screen_track)
         pc.addTrack(self.system_audio_track)
@@ -99,8 +92,7 @@ class TargetAgent:
 
         @pc.on("track")
         def on_track(track) -> None:
-            if track.kind == "audio":
-                self.mic_sink.task = asyncio.create_task(self.mic_sink.consume(track))
+            logging.info("received %s track from viewer; ignoring while source audio streaming is enabled", track.kind)
 
         @pc.on("icecandidate")
         async def on_icecandidate(candidate) -> None:
@@ -160,26 +152,17 @@ class TargetAgent:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Minimal WebRTC remote desktop target agent")
-    parser.add_argument("--config", default=os.environ.get("AGENT_CONFIG", "config.json"))
+    app_dir = os.path.dirname(sys.executable if getattr(sys, "frozen", False) else __file__)
+    default_config = os.path.join(app_dir, "config.json")
+    parser.add_argument("--config", default=os.environ.get("AGENT_CONFIG", default_config))
     parser.add_argument("--room", default=os.environ.get("ROOM", "demo"))
-    parser.add_argument("--signaling-url", default=os.environ.get("SIGNALING_URL", "ws://127.0.0.1:8080/ws"))
+    parser.add_argument("--signaling-url", default=os.environ.get("SIGNALING_URL", "ws://13.205.19.192:8080/ws"))
     parser.add_argument("--system-audio-device", type=int, default=env_int("SYSTEM_AUDIO_DEVICE"))
-    parser.add_argument(
-        "--mic-injection-device",
-        type=int,
-        default=env_int("MIC_INJECTION_DEVICE") or env_int("MIC_OUTPUT_DEVICE"),
-        help="Output device index that feeds the target microphone path, for example VB-CABLE 'CABLE Input'.",
-    )
-    parser.add_argument(
-        "--mic-injection-name",
-        default=os.environ.get("MIC_INJECTION_NAME"),
-        help="Substring of the mic injection output device name, for example 'CABLE Input'.",
-    )
     parser.add_argument("--list-audio-devices", action="store_true")
     args = parser.parse_args()
     config = read_config(args.config)
 
-    for key in ("room", "signaling_url", "system_audio_device", "mic_injection_device", "mic_injection_name"):
+    for key in ("room", "signaling_url", "system_audio_device"):
         if key in config and getattr(args, key) in (None, "", parser.get_default(key)):
             setattr(args, key, config[key])
 
@@ -197,17 +180,10 @@ async def async_main() -> None:
             print(f"  {device['index']}: {device['name']}")
         return
 
-    mic_injection_device = args.mic_injection_device
-    if mic_injection_device is None and args.mic_injection_name:
-        mic_injection_device = find_output_device_by_name(args.mic_injection_name)
-        if mic_injection_device is None:
-            raise SystemExit(f"No output device matched --mic-injection-name {args.mic_injection_name!r}")
-
     agent = TargetAgent(
         signaling_url=args.signaling_url,
         room=args.room,
         system_audio_device=args.system_audio_device,
-        mic_injection_device=mic_injection_device,
     )
     await agent.run()
 

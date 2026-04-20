@@ -4,7 +4,6 @@ Minimal WebRTC remote desktop with:
 
 - screen streaming over a WebRTC video track
 - system audio streaming over a WebRTC audio track
-- viewer microphone traversal back to the target machine
 - keyboard and mouse control over a WebRTC DataChannel
 - Dockerized signaling, coturn, and LiveKit services
 
@@ -56,7 +55,6 @@ The target agent must run on the real desktop machine because it needs local acc
 - the screen
 - the system audio capture device
 - the OS input APIs
-- the mic injection audio endpoint
 
 Install Python dependencies:
 
@@ -77,8 +75,7 @@ Run the agent:
 python3 agent.py \
   --room demo \
   --signaling-url ws://13.205.19.192:8080/ws \
-  --system-audio-device 3 \
-  --mic-injection-device 5
+  --system-audio-device 3
 ```
 
 ## Portable EXE target agent
@@ -103,10 +100,10 @@ Then send only that `.exe` to the target Windows machine and run:
 
 ```powershell
 .\remote-desktop-agent.exe --list-audio-devices
-.\remote-desktop-agent.exe --room demo --signaling-url ws://13.205.19.192:8080/ws --system-audio-device 3 --mic-injection-device 5
+.\remote-desktop-agent.exe --room demo --signaling-url ws://13.205.19.192:8080/ws --system-audio-device 3
 ```
 
-If the target uses the default room, server, and `CABLE Input` mic injection endpoint, it can run with no arguments:
+If the target uses the default room and server, it can run with no arguments:
 
 ```powershell
 .\remote-desktop-agent.exe
@@ -126,7 +123,7 @@ Notes:
 
 - The `.exe` is for Windows targets.
 - You should build the `.exe` on Windows for best compatibility.
-- The target machine still needs the required audio endpoint installed locally if you want system audio capture or mic injection.
+- The target machine needs a working system-audio capture endpoint if you want app/system audio streamed to the viewer.
 
 ## Target package from macOS
 
@@ -162,7 +159,7 @@ Open:
 http://13.205.19.192:8080/?room=demo
 ```
 
-Click `Connect`, allow microphone access, then click the remote video to send keyboard input.
+Click `Connect`, then click the remote video to send keyboard input.
 
 ## AWS EC2 notes
 
@@ -187,24 +184,6 @@ Click `Connect`, allow microphone access, then click the remote video to send ke
 - Windows: `Stereo Mix`, `VB-Cable`, or a WASAPI loopback-compatible device
 - Linux: a PulseAudio or PipeWire monitor source
 - macOS: `BlackHole` or another loopback device
-
-### Viewer mic injection
-
-`--mic-injection-device` must point to the mic injection output side.
-
-For Windows with VB-CABLE:
-
-- the agent writes to `CABLE Input`, which appears as an output device
-- the target app selects `CABLE Output`, which appears as a microphone/input device
-
-Recommended flow:
-
-```powershell
-.\remote-desktop-agent.exe --list-audio-devices
-.\remote-desktop-agent.exe --room demo --signaling-url ws://13.205.19.192:8080/ws --system-audio-device 3 --mic-injection-name "CABLE Input"
-```
-
-If no `--mic-injection-device` or `--mic-injection-name` is provided, the agent tries to auto-detect common devices like VB-CABLE, VoiceMeeter, BlackHole, and Loopback. If none is found, it stops instead of accidentally playing the viewer voice through speakers.
 
 ## Notes
 

@@ -1,6 +1,5 @@
 const roomInput = document.getElementById("room");
 const connectButton = document.getElementById("connect");
-const muteButton = document.getElementById("mute-mic");
 const statusEl = document.getElementById("status");
 const remoteVideo = document.getElementById("remoteVideo");
 
@@ -15,8 +14,6 @@ remoteVideo.srcObject = remoteMedia;
 let ws;
 let pc;
 let inputChannel;
-let localMicStream;
-let micEnabled = true;
 let connectedRoom = "";
 let makingOffer = false;
 
@@ -37,20 +34,6 @@ function buildIceServers() {
     { urls: [`turn:${host}:3478?transport=udp`], username: "demo", credential: "demopass" },
     { urls: [`turns:${host}:5349?transport=tcp`], username: "demo", credential: "demopass" },
   ];
-}
-
-async function ensureMicrophone() {
-  if (!localMicStream) {
-    localMicStream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: false,
-      },
-      video: false,
-    });
-  }
-  return localMicStream;
 }
 
 function installPeerHandlers() {
@@ -95,10 +78,8 @@ async function createPeer() {
   pc = new RTCPeerConnection({ iceServers: buildIceServers() });
   installPeerHandlers();
 
-  const mic = await ensureMicrophone();
-  for (const track of mic.getAudioTracks()) {
-    pc.addTrack(track, mic);
-  }
+  pc.addTransceiver("video", { direction: "recvonly" });
+  pc.addTransceiver("audio", { direction: "recvonly" });
 
   inputChannel = pc.createDataChannel("input", { ordered: true });
   attachDataChannelHandlers();
@@ -301,13 +282,4 @@ async function connect() {
 
 connectButton.addEventListener("click", () => {
   connect().catch((error) => setStatus(`Connect failed: ${error.message}`));
-});
-
-muteButton.addEventListener("click", async () => {
-  const stream = await ensureMicrophone();
-  micEnabled = !micEnabled;
-  stream.getAudioTracks().forEach((track) => {
-    track.enabled = micEnabled;
-  });
-  muteButton.textContent = micEnabled ? "Mute mic" : "Unmute mic";
 });
