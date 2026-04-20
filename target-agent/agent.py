@@ -204,7 +204,14 @@ async def async_main() -> None:
     if mic_injection_device is None and args.mic_injection_name:
         mic_injection_device = find_output_device_by_name(args.mic_injection_name)
         if mic_injection_device is None:
-            raise SystemExit(f"No output device matched --mic-injection-name {args.mic_injection_name!r}")
+            output_devices = "\n".join(
+                f"  {device['index']}: {device['name']}" for device in list_output_devices()
+            )
+            raise SystemExit(
+                f"No output device matched --mic-injection-name {args.mic_injection_name!r}.\n"
+                f"Available output devices:\n{output_devices or '  none'}\n"
+                "Run again with --mic-injection-device <index> or --mic-injection-name <exact substring>."
+            )
 
     agent = TargetAgent(
         signaling_url=args.signaling_url,
