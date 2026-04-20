@@ -1,7 +1,7 @@
 port: 7880
 rtc:
   port_range_start: 50000
-  port_range_end: 60000
+  port_range_end: 54999
 keys:
   devkey: secret
 logging:

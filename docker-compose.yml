@@ -3,23 +3,17 @@ services:
     image: livekit/livekit-server:latest
     command: ["--config", "/etc/livekit/livekit.yaml"]
     restart: unless-stopped
+    network_mode: host
     volumes:
       - ./server/livekit/livekit.yaml:/etc/livekit/livekit.yaml:ro
-    ports:
-      - "7880:7880"
-      - "7881:7881"
-      - "50000-60000:50000-60000/udp"
 
   coturn:
     image: coturn/coturn:4.6.2
     command: ["turnserver", "-c", "/etc/coturn/turnserver.conf", "--no-cli"]
     restart: unless-stopped
+    network_mode: host
     volumes:
       - ./server/coturn/turnserver.conf:/etc/coturn/turnserver.conf:ro
-    ports:
-      - "3478:3478"
-      - "5349:5349"
-      - "50000-60000:50000-60000/udp"
 
   signaling:
     image: node:20-alpine
