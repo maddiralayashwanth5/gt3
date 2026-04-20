@@ -1,0 +1,40 @@
+{
+  "signaling": {
+    "join": {
+      "type": "join",
+      "room": "demo",
+      "role": "viewer|target"
+    },
+    "offer": {
+      "type": "offer",
+      "sdp": "..."
+    },
+    "answer": {
+      "type": "answer",
+      "sdp": "..."
+    },
+    "ice-candidate": {
+      "type": "ice-candidate",
+      "candidate": {
+        "candidate": "candidate:...",
+        "sdpMid": "0",
+        "sdpMLineIndex": 0
+      }
+    }
+  },
+  "control": {
+    "mouse": {
+      "type": "mouse",
+      "action": "move|down|up|wheel",
+      "x": 400,
+      "y": 300,
+      "button": "left",
+      "deltaY": -1
+    },
+    "key": {
+      "type": "key",
+      "action": "down|up",
+      "key": "Enter"
+    }
+  }
+}

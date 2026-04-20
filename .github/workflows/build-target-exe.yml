@@ -1,0 +1,34 @@
+name: Build target EXE
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "target-agent/**"
+      - ".github/workflows/build-target-exe.yml"
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          architecture: "x64"
+
+      - name: Build one-file EXE
+        shell: pwsh
+        run: |
+          cd target-agent
+          .\build-exe.ps1 -Clean
+
+      - name: Upload EXE
+        uses: actions/upload-artifact@v4
+        with:
+          name: remote-desktop-agent-windows
+          path: target-agent/dist/remote-desktop-agent.exe
